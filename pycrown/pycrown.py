@@ -21,12 +21,13 @@ import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
 from scipy.spatial.distance import cdist
 
-from skimage.morphology import watershed
+#from skimage.morphology import watershed
+from skimage.segmentation import watershed
 from skimage.filters import threshold_otsu
 # from skimage.feature import peak_local_max
 
-import gdal
-import osr
+#import gdal
+from osgeo import gdal, osr
 
 from shapely.geometry import mapping, Point, Polygon
 
@@ -187,14 +188,13 @@ class PyCrown:
         fname :   str
                   Path to LiDAR dataset (.las or .laz-file)
         """
-        las = laspy.file.File(str(fname), mode='r')
+        las = laspy.read(str(fname))
         lidar_points = np.array((
             las.x, las.y, las.z, las.intensity, las.return_num,
             las.classification
         )).transpose()
         colnames = ['x', 'y', 'z', 'intensity', 'return_num', 'classification']
         self.las = pd.DataFrame(lidar_points, columns=colnames)
-        las.close()
 
     def _check_empty(self):
         """ Helper function raising an Exception if no trees present
@@ -876,21 +876,22 @@ class PyCrown:
             print('Classifying point cloud')
             lidar_in_crowns = lidar_in_crowns[lidar_tree_mask]
             lidar_tree_class = lidar_tree_class[lidar_tree_mask]
-            header = laspy.header.Header()
+            #header = laspy.header.Header()
             self.outpath.mkdir(parents=True, exist_ok=True)
-            outfile = laspy.file.File(
-                self.outpath / "trees.las", mode="w", header=header
-            )
+            #outfile = laspy.create(header=header)
+            outfile = laspy.create(file_version="1.2", point_format=3)
             xmin = np.floor(np.min(lidar_in_crowns.x))
             ymin = np.floor(np.min(lidar_in_crowns.y))
             zmin = np.floor(np.min(lidar_in_crowns.z))
-            outfile.header.offset = [xmin, ymin, zmin]
-            outfile.header.scale = [0.001, 0.001, 0.001]
+            #outfile.header.offset = [xmin, ymin, zmin]
+            outfile.header.offsets = [xmin, ymin, zmin]
+            #outfile.header.scale = [0.001, 0.001, 0.001]
+            outfile.header.scales = [0.001, 0.001, 0.001]
             outfile.x = lidar_in_crowns.x
             outfile.y = lidar_in_crowns.y
             outfile.z = lidar_in_crowns.z
             outfile.intensity = lidar_tree_class
-            outfile.close()
+            outfile.write(self.outpath / "trees.las")
 
         self.lidar_in_crowns = lidar_in_crowns
 
