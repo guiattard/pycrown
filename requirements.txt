@@ -12,3 +12,4 @@ geopandas
 GDAL==3.3.2
 rasterio
 Cython
+matplotlib
